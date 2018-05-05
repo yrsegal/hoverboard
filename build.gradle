@@ -1,0 +1,74 @@
+buildscript {
+    repositories {
+        jcenter()
+        maven {
+            name = "forge"
+            url = "https://files.minecraftforge.net/maven"
+        }
+    }
+    dependencies {
+        classpath "net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT"
+    }
+}
+
+apply plugin: "net.minecraftforge.gradle.forge"
+
+version = mod_version
+group= mod_group
+archivesBaseName = mod_name
+
+minecraft {
+    version = project.forge_version
+    runDir = "run"
+
+    if (project.hasProperty("core_plugin") && !core_plugin.isEmpty()) {
+        clientJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
+        serverJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
+    }
+
+    mappings = project.mcp_version
+
+    replace 'GRADLE:VERSION', mod_version
+
+    replaceIn mod_main_class
+    replaceIn "mcmod.info"
+}
+
+if (project.hasProperty("core_plugin") && !core_plugin.isEmpty()) {
+    jar {
+        manifest {
+            attributes(
+                    "FMLCorePluginContainsFMLMod": "true",
+                    "FMLCorePlugin": core_plugin)
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { url = "http://dvs1.progwml6.com/files/maven" }
+}
+
+dependencies {
+    deobfCompile "mezz.jei:jei_1.12:$jei_version:api"
+    runtime "mezz.jei:jei_1.12:$jei_version"
+}
+
+processResources {
+    // this will ensure that this task is redone when the versions change.
+    inputs.property "mod_version", project.version
+    inputs.property "mc_version", project.minecraft.version
+
+    // replace stuff in mcmod.info, nothing else
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+
+        // replace version and mcversion
+        expand "mod_version":project.version, "mc_version":project.minecraft.version
+    }
+
+    // copy everything else, thats not the mcmod.info
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+}
