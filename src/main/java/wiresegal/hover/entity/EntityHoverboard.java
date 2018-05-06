@@ -304,11 +304,11 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
 
 
     private boolean canFly() {
-        return inWater || overWater() ||
+        return isPowered(false) && (inWater || overWater() ||
                 overAny(world, getEntityBoundingBox().grow(0, -HoverConfig.GENERAL.flightRange, 0).shrink(0.001)) ||
                 (HoverConfig.UGLIES.ugliesFlight &&
                         world.isMaterialInBB(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.WATER) ||
-                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.IRON));
+                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.IRON)));
     }
 
     private void updateMotion() {
@@ -467,7 +467,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     }
     
     public void setContainedItem(ItemStack stack) {
-        containedItem = stack;
+        containedItem = stack.copy();
         energyStorage = stack.hasCapability(CapabilityEnergy.ENERGY, null) ?
                 stack.getCapability(CapabilityEnergy.ENERGY, null) :
                 (HoverConfig.isBoardFree() ?
