@@ -230,7 +230,6 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
             double prevMag = Math.sqrt(mX * mX + mZ * mZ);
             double newMag = Math.sqrt(motionX * motionX + motionZ * motionZ);
 
-
             if (prevMag > newMag && !world.isRemote) {
                 float impactForce = (float)((prevMag - newMag) * 10.0D - 3.0D);
 
@@ -247,7 +246,8 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
         }
 
         if (!onGround && motionY > -0.08) // If we're moving in free-fall, no need to take power
-            isPowered(true);
+            if (isPowered(true))
+                fallDistance = 0;
 
 
         doBlockCollisions();
