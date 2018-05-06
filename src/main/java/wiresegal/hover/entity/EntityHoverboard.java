@@ -3,8 +3,10 @@ package wiresegal.hover.entity;
 import net.minecraft.block.material.Material;
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.IJumpingMount;
 import net.minecraft.entity.MoverType;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.init.SoundEvents;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.network.datasync.DataParameter;
@@ -12,6 +14,7 @@ import net.minecraft.network.datasync.DataSerializers;
 import net.minecraft.network.datasync.EntityDataManager;
 import net.minecraft.util.*;
 import net.minecraft.util.math.AxisAlignedBB;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.Constants;
@@ -31,7 +34,7 @@ import java.util.List;
  * @author WireSegal
  * Created at 12:16 PM on 5/5/18.
  */
-public class EntityHoverboard extends Entity {
+public class EntityHoverboard extends Entity implements IJumpingMount {
     private static final DataParameter<Integer> TIME_SINCE_HIT
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.VARINT);
     private static final DataParameter<Float> DAMAGE_TAKEN
@@ -96,7 +99,7 @@ public class EntityHoverboard extends Entity {
 
     @Override
     public boolean attackEntityFrom(@Nonnull DamageSource source, float amount) {
-        if (isEntityInvulnerable(source)) 
+        if (isEntityInvulnerable(source))
             return false;
         else if (!world.isRemote && !isDead) {
             if (source instanceof EntityDamageSourceIndirect && source.getTrueSource() != null && isPassenger(source.getTrueSource()))
@@ -105,7 +108,7 @@ public class EntityHoverboard extends Entity {
                 setTimeSinceHit(10);
                 setDamageTaken(getDamageTaken() + amount * 10.0F);
                 markVelocityChanged();
-                boolean instantBreak = source.getTrueSource() instanceof EntityPlayer && 
+                boolean instantBreak = source.getTrueSource() instanceof EntityPlayer &&
                         ((EntityPlayer) source.getTrueSource()).capabilities.isCreativeMode;
 
                 if (instantBreak || getDamageTaken() > 40.0F) {
@@ -117,7 +120,7 @@ public class EntityHoverboard extends Entity {
 
                 return true;
             }
-        } else 
+        } else
             return true;
     }
 
@@ -158,6 +161,31 @@ public class EntityHoverboard extends Entity {
         onGround |= state.getMaterial().blocksMovement();
     }
 
+    private long lastJumped = 0;
+
+    @Override
+    public void setJumpPower(int jumpPower) {
+        if (world.getTotalWorldTime() - lastJumped >= 20 && canFly()) {
+            lastJumped = world.getTotalWorldTime();
+            motionY += 0.42F * jumpPower / 75;
+        }
+    }
+
+    @Override
+    public boolean canJump() {
+        return true;
+    }
+
+    @Override
+    public void handleStartJump(int jumpPower) {
+        // NO-OP
+    }
+
+    @Override
+    public void handleStopJump() {
+        // NO-OP
+    }
+
     @Nonnull
     @Override
     public EnumFacing getAdjustedHorizontalFacing() {
@@ -166,10 +194,10 @@ public class EntityHoverboard extends Entity {
 
     @Override
     public void onUpdate() {
-        if (getTimeSinceHit() > 0) 
+        if (getTimeSinceHit() > 0)
             setTimeSinceHit(getTimeSinceHit() - 1);
 
-        if (getDamageTaken() > 0.0F) 
+        if (getDamageTaken() > 0.0F)
             setDamageTaken(getDamageTaken() - 1.0F);
 
         prevPosX = posX;
@@ -186,7 +214,22 @@ public class EntityHoverboard extends Entity {
             if (world.isRemote)
                 controlBoard();
 
+            double mX = motionX, mZ = motionZ;
             move(MoverType.SELF, motionX, motionY, motionZ);
+
+            double prevMag = Math.sqrt(mX * mX + mZ * mZ);
+            double newMag = Math.sqrt(motionX * motionX + motionZ * motionZ);
+
+
+            if (prevMag > newMag && !world.isRemote) {
+                float impactForce = (float)((prevMag - newMag) * 10.0D - 3.0D);
+
+                if (impactForce > 0.0F) {
+                    playSound(impactForce > 4 ? SoundEvents.ENTITY_PLAYER_BIG_FALL : SoundEvents.ENTITY_PLAYER_SMALL_FALL, 1, 1);
+                    for (Entity passenger : getRecursivePassengers())
+                        passenger.attackEntityFrom(DamageSource.FLY_INTO_WALL, impactForce);
+                }
+            }
         } else {
             motionX = 0.0D;
             motionY = 0.0D;
@@ -220,13 +263,42 @@ public class EntityHoverboard extends Entity {
     }
 
     private boolean overWater() {
-        return !inWater && world.handleMaterialAcceleration(getEntityBoundingBox().grow(0, -2, 0).shrink(0.001), Material.WATER, this);
+        return !inWater && world.isMaterialInBB(getEntityBoundingBox().grow(0, -2, 0).shrink(0.001), Material.WATER);
     }
 
-    private boolean overUglyMaterial() {
-        return !inWater && HoverConfig.UGLIES.ugliesFlight &&
-                world.handleMaterialAcceleration(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.WATER, this) ||
-                world.handleMaterialAcceleration(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.IRON, this);
+    private boolean overAny(World world, AxisAlignedBB bb) {
+        int mX = MathHelper.floor(bb.minX);
+        int mY = MathHelper.ceil(bb.maxX);
+        int mZ = MathHelper.floor(bb.minY);
+        int mxX = MathHelper.ceil(bb.maxY);
+        int mxY = MathHelper.floor(bb.minZ);
+        int mxZ = MathHelper.ceil(bb.maxZ);
+        BlockPos.PooledMutableBlockPos pos = BlockPos.PooledMutableBlockPos.retain();
+
+        for (int x = mX; x < mY; ++x) {
+            for (int y = mZ; y < mxX; ++y) {
+                for (int z = mxY; z < mxZ; ++z) {
+                    IBlockState state = world.getBlockState(pos.setPos(x, y, z));
+                    AxisAlignedBB bound = state.getCollisionBoundingBox(world, pos);
+                    if (bound == null || !bound.offset(pos).intersects(bb))
+                        continue;
+                    pos.release();
+                    return true;
+                }
+            }
+        }
+
+        pos.release();
+        return false;
+    }
+
+
+    private boolean canFly() {
+        return inWater || overWater() ||
+                overAny(world, getEntityBoundingBox().grow(0, -HoverConfig.GENERAL.flightRange, 0).shrink(0.001)) ||
+                (HoverConfig.UGLIES.ugliesFlight &&
+                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.WATER) ||
+                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.IRON));
     }
 
     private void updateMotion() {
@@ -236,10 +308,10 @@ public class EntityHoverboard extends Entity {
 
         double dy = hasNoGravity() ? 0.0D : (isPowered && !movingUp ? -0.005 : -0.04);
 
-        if (overUglyMaterial() || overWater())
-            dy = Math.max(-motionY, 0);
-        else if (inWater)
-            dy = Math.max(-motionY, 0) + 0.125 + dy;
+        if (inWater)
+            dy = -Math.min(motionY, 0) + 0.125 + dy;
+        else if (canFly())
+            dy = -Math.min(motionY, 0);
 
         float momentum = isPowered ? 0.95F : 0.25F;
 
@@ -279,7 +351,7 @@ public class EntityHoverboard extends Entity {
                 float yDir = MathHelper.sin(-rider.rotationPitch * (float) Math.PI / 180);
                 float zDir = MathHelper.cos(rotationYaw * (float) Math.PI / 180);
 
-                float maxMomentum = 1F;
+                float maxMomentum = 0.8F;
                 float momentum = MathHelper.sqrt(motionX * motionX * xDir * xDir + motionZ * motionZ * zDir * zDir);
 
                 float dm = (maxMomentum - momentum) * f / 2;
@@ -288,7 +360,7 @@ public class EntityHoverboard extends Entity {
                 motionZ += (zDir * dm);
 
 
-                boolean allowUp = inWater || overUglyMaterial();
+                boolean allowUp = canFly();
                 double threshold = 0.25;
                 if (overWater()) threshold = 0.1;
                 if (yDir < (threshold - 1) || (allowUp && yDir > (1 - threshold))) {
@@ -311,6 +383,7 @@ public class EntityHoverboard extends Entity {
             double z = MathHelper.sin(yaw) * 0.2;
 
             passenger.setPosition(posX + x, posY + y, posZ + z);
+            passenger.fallDistance = 0.0f;
             passenger.rotationYaw += deltaRotation;
             passenger.setRotationYawHead(passenger.getRotationYawHead() + deltaRotation);
             applyYawToEntity(passenger);

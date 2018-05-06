@@ -32,7 +32,7 @@ public class HoverConfig {
         @Config.Comment({
                 "How far below the hoverboard can the magnetic block be before it stops working?",
                 "Default: 8" })
-        public int flightRange = 8;
+        public double flightRange = 20;
     }
 
     public static class General {
@@ -50,6 +50,13 @@ public class HoverConfig {
                 "If Fuel Cost or Fuel Storage is 0, the hoverboard won't store power at all."
         })
         public int fuelStorage = 30000;
+
+        @Config.Name("Flight Radius")
+        @Config.Comment({
+                "How high above the ground can the hoverboard stay in the air?",
+                "Default: 3 blocks."
+        })
+        public double flightRange = 3;
     }
 
     public static boolean isBoardFree() {
