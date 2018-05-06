@@ -167,7 +167,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     public void setJumpPower(int jumpPower) {
         if (world.getTotalWorldTime() - lastJumped >= 20 && canFly()) {
             lastJumped = world.getTotalWorldTime();
-            motionY += 0.42F * jumpPower / 75;
+            motionY += 0.42F * (jumpPower / 100 + 0.7) ;
         }
     }
 
