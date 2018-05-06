@@ -162,12 +162,15 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     }
 
     private long lastJumped = 0;
+    private boolean hasBeenOnGround = false;
 
     @Override
     public void setJumpPower(int jumpPower) {
-        if (world.getTotalWorldTime() - lastJumped >= 20 && canFly()) {
+        if (world.getTotalWorldTime() - lastJumped >= 20 && (hasBeenOnGround || canFly())) {
             lastJumped = world.getTotalWorldTime();
-            motionY += 0.42F * (jumpPower / 75 + 1);
+            motionY += 0.42F * (jumpPower / 100.0 + 0.75);
+            if (!onGround)
+                hasBeenOnGround = false;
         }
     }
 
@@ -211,6 +214,9 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
                 world.spawnParticle(EnumParticleTypes.REDSTONE, posX + (rand.nextDouble() - 0.5) * width, posY + rand.nextDouble() * height, posZ + (rand.nextDouble() - 0.5) * width, -1, 1, 1);
 
         tickLerp();
+
+        if (onGround)
+            hasBeenOnGround = true;
 
         if (canPassengerSteer()) {
             updateMotion();
