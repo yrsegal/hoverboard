@@ -32,6 +32,7 @@ public class HoverConfig {
         @Config.Comment({
                 "How far below the hoverboard can the magnetic block be before it stops working?",
                 "Default: 8" })
+        @Config.RangeDouble(min = 0, max = 50)
         public double flightRange = 20;
     }
 
@@ -42,6 +43,7 @@ public class HoverConfig {
                 "It won't consume power while moving down at the speed of gravity or more.",
                 "If Fuel Cost or Fuel Storage is 0, the hoverboard will be free to use."
         })
+        @Config.RangeInt(min = 0, max = 50)
         public int fuelCost = 5;
 
         @Config.Name("Fuel Storage")
@@ -49,6 +51,7 @@ public class HoverConfig {
                 "How much RF/FE does the Hoverboard store?",
                 "If Fuel Cost or Fuel Storage is 0, the hoverboard won't store power at all."
         })
+        @Config.RangeInt(min = 0, max = 1000000)
         public int fuelStorage = 30000;
 
         @Config.Name("Flight Radius")
@@ -56,7 +59,16 @@ public class HoverConfig {
                 "How high above the ground can the hoverboard stay in the air?",
                 "Default: 3 blocks."
         })
+        @Config.RangeDouble(min = 1, max = 10)
         public double flightRange = 3;
+
+        @Config.Name("Hoverboard Sound")
+        @Config.Comment({
+                "Do you want that sound?",
+                "If not, set this value to 0. Otherwise, this is a volume multiplier."
+        })
+        @Config.RangeDouble(min = 0, max = 5)
+        public float hoverboardVolume = 1;
     }
 
     public static boolean isBoardFree() {

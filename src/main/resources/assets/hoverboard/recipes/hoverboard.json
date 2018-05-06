@@ -1,0 +1,28 @@
+{
+	"type": "forge:ore_shaped",
+	"pattern": [
+		"IEI",
+		"ARA"
+	],
+	"key": {
+		"I": {
+			"type": "forge:ore_dict",
+			"ore": "ingotIron"
+		},
+		"A": {
+			"type": "forge:ore_dict",
+			"ore": "gemLapis"
+		},
+		"E": {
+			"type": "forge:ore_dict",
+			"ore": "enderpearl"
+		},
+		"R": {
+			"type": "forge:ore_dict",
+			"ore": "dustRedstone"
+		}
+	},
+	"result": {
+		"item": "hoverboard:hoverboard"
+	}
+}

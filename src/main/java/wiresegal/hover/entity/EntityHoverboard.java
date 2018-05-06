@@ -167,7 +167,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     public void setJumpPower(int jumpPower) {
         if (world.getTotalWorldTime() - lastJumped >= 20 && canFly()) {
             lastJumped = world.getTotalWorldTime();
-            motionY += 0.42F * (jumpPower / 100 + 0.7) ;
+            motionY += 0.42F * (jumpPower / 75 + 1);
         }
     }
 
@@ -205,6 +205,10 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
         prevPosZ = posZ;
 
         super.onUpdate();
+
+        if (world.isRemote)
+            for (int i = 0; i < 2; ++i)
+                world.spawnParticle(EnumParticleTypes.REDSTONE, posX + (rand.nextDouble() - 0.5) * width, posY + rand.nextDouble() * height, posZ + (rand.nextDouble() - 0.5) * width, -1, 1, 1);
 
         tickLerp();
 
@@ -377,12 +381,9 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     @Override
     public void updatePassenger(@Nonnull Entity passenger) {
         if (isPassenger(passenger)) {
-            float yaw = (float) (-rotationYaw * Math.PI / 180 - (Math.PI / 2));
-            double x = MathHelper.cos(yaw) * 0.2;
             double y = (isDead ? 0.01 : getMountedYOffset()) + passenger.getYOffset();
-            double z = MathHelper.sin(yaw) * 0.2;
 
-            passenger.setPosition(posX + x, posY + y, posZ + z);
+            passenger.setPosition(posX, posY + y, posZ);
             passenger.fallDistance = 0.0f;
             passenger.rotationYaw += deltaRotation;
             passenger.setRotationYawHead(passenger.getRotationYawHead() + deltaRotation);
@@ -391,6 +392,11 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
             if (passenger instanceof EntityPlayer)
                 Hoverboard.PROXY.updateInputs(this, (EntityPlayer) passenger);
         }
+    }
+
+    @Override
+    public double getMountedYOffset() {
+        return 0.5;
     }
 
     protected void applyYawToEntity(Entity entityToUpdate) {
@@ -406,6 +412,11 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     @SideOnly(Side.CLIENT)
     public void applyOrientationToEntity(Entity entityToUpdate) {
         applyYawToEntity(entityToUpdate);
+    }
+
+    @Override
+    public boolean shouldRiderSit() {
+        return false;
     }
 
     @Override

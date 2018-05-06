@@ -1,0 +1,7 @@
+{
+  "whirr": {
+    "category": "player",
+    "sounds": [ "hoverboard:whirr" ],
+    "subtitle": "hoverboard.whirr"
+  }
+}
