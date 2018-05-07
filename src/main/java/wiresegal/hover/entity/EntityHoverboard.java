@@ -39,6 +39,16 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.VARINT);
     private static final DataParameter<Float> DAMAGE_TAKEN
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.FLOAT);
+    private static final DataParameter<ItemStack> CONTAINED
+            = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.ITEM_STACK);
+    private static final DataParameter<Integer> POWER
+            = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.VARINT);
+    private static final DataParameter<Integer> COST
+            = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.VARINT);
+    private static final DataParameter<Float> UGLIES
+            = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.FLOAT);
+    private static final DataParameter<Float> RANGE
+            = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.FLOAT);
 
     private float deltaRotation;
     private int lerpSteps;
@@ -53,8 +63,6 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     private boolean backInputDown;
 
     public boolean creative = false;
-    private ItemStack containedItem = ItemStack.EMPTY;
-    private IEnergyStorage energyStorage = new EnergyStorage(0);
 
     public EntityHoverboard(World worldIn) {
         super(worldIn);
@@ -83,6 +91,11 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     protected void entityInit() {
         dataManager.register(TIME_SINCE_HIT, 0);
         dataManager.register(DAMAGE_TAKEN, 0F);
+        dataManager.register(CONTAINED, ItemStack.EMPTY);
+        dataManager.register(POWER, 0);
+        dataManager.register(COST, HoverConfig.GENERAL.fuelCost);
+        dataManager.register(UGLIES, (float) HoverConfig.UGLIES.flightRange);
+        dataManager.register(RANGE, (float) HoverConfig.GENERAL.flightRange);
     }
 
     @Nullable
@@ -209,6 +222,8 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
 
         super.onUpdate();
 
+        setPower(getEnergyContainer().getEnergyStored());
+
         if (world.isRemote)
             for (int i = 0; i < 2; ++i)
                 world.spawnParticle(EnumParticleTypes.REDSTONE, posX + (rand.nextDouble() - 0.5) * width, posY + rand.nextDouble() * height, posZ + (rand.nextDouble() - 0.5) * width, -1, 1, 1);
@@ -305,10 +320,10 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
 
     private boolean canFly() {
         return isPowered(false) && (inWater || overWater() ||
-                overAny(world, getEntityBoundingBox().grow(0, -HoverConfig.GENERAL.flightRange, 0).shrink(0.001)) ||
+                overAny(world, getEntityBoundingBox().grow(0, -getFlightRange(), 0).shrink(0.001)) ||
                 (HoverConfig.UGLIES.ugliesFlight &&
-                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.WATER) ||
-                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -HoverConfig.UGLIES.flightRange, 0).shrink(0.001), Material.IRON)));
+                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -getUgliesFlightRange(), 0).shrink(0.001), Material.WATER) ||
+                        world.isMaterialInBB(getEntityBoundingBox().grow(0, -getUgliesFlightRange(), 0).shrink(0.001), Material.IRON)));
     }
 
     private void updateMotion() {
@@ -465,10 +480,11 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     public int getTimeSinceHit() {
         return dataManager.get(TIME_SINCE_HIT);
     }
-    
-    public void setContainedItem(ItemStack stack) {
-        containedItem = stack.copy();
-        energyStorage = stack.hasCapability(CapabilityEnergy.ENERGY, null) ?
+
+
+    public IEnergyStorage getEnergyContainer() {
+        ItemStack stack = getContainedItem();
+        return stack.hasCapability(CapabilityEnergy.ENERGY, null) ?
                 stack.getCapability(CapabilityEnergy.ENERGY, null) :
                 (HoverConfig.isBoardFree() ?
                         new DummyEnergyStorage() :
@@ -476,13 +492,38 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     }
 
     public boolean isPowered(boolean consumePower) {
+        IEnergyStorage energyStorage = getEnergyContainer();
         return creative ||
-                (energyStorage.extractEnergy(HoverConfig.GENERAL.fuelCost, true) == 0 &&
-                (!consumePower || energyStorage.extractEnergy(HoverConfig.GENERAL.fuelCost, false) == 0));
+                (getPower() >= getCost() &&
+                (!consumePower || energyStorage.extractEnergy(getCost(), false) == 0));
     }
 
     public ItemStack getContainedItem() {
-        return containedItem;
+        return dataManager.get(CONTAINED);
+    }
+
+    public void setContainedItem(ItemStack stack) {
+        dataManager.set(CONTAINED, stack.copy());
+    }
+
+    public void setPower(int power) {
+        dataManager.set(POWER, power);
+    }
+
+    public int getPower() {
+        return dataManager.get(POWER);
+    }
+
+    public int getCost() {
+        return dataManager.get(COST);
+    }
+
+    public float getUgliesFlightRange() {
+        return dataManager.get(UGLIES);
+    }
+
+    public float getFlightRange() {
+        return dataManager.get(RANGE);
     }
 
     @Override
