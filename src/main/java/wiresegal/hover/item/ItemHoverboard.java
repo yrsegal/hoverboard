@@ -114,13 +114,13 @@ public class ItemHoverboard extends Item {
     @Override
     @SideOnly(Side.CLIENT)
     public int getRGBDurabilityForDisplay(@Nonnull ItemStack stack) {
-        float amount = (float) (1.0F - getDurabilityForDisplay(stack));
+        float amount = (float) (1.0F - getDurabilityForDisplay(stack) / 2);
         return MathHelper.hsvToRGB(0.0F, amount, amount);
     }
 
     @Nullable
     @Override
     public ICapabilityProvider initCapabilities(ItemStack stack, @Nullable NBTTagCompound nbt) {
-        return ForgeEnergyContainer.provide();
+        return ForgeEnergyContainer.provide(stack);
     }
 }

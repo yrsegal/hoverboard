@@ -49,6 +49,8 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.FLOAT);
     private static final DataParameter<Float> RANGE
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.FLOAT);
+    private static final DataParameter<Boolean> CREATIVE
+            = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.BOOLEAN);
 
     private float deltaRotation;
     private int lerpSteps;
@@ -61,8 +63,6 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     private boolean rightInputDown;
     private boolean forwardInputDown;
     private boolean backInputDown;
-
-    public boolean creative = false;
 
     public EntityHoverboard(World worldIn) {
         super(worldIn);
@@ -96,6 +96,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
         dataManager.register(COST, HoverConfig.GENERAL.fuelCost);
         dataManager.register(UGLIES, (float) HoverConfig.UGLIES.flightRange);
         dataManager.register(RANGE, (float) HoverConfig.GENERAL.flightRange);
+        dataManager.register(CREATIVE, false);
     }
 
     @Nullable
@@ -443,7 +444,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     @Override
     protected void writeEntityToNBT(@Nonnull NBTTagCompound compound) {
         compound.setTag("Item", getContainedItem().serializeNBT());
-        compound.setBoolean("Creative", creative);
+        compound.setBoolean("Creative", isCreative());
     }
 
     @Override
@@ -451,7 +452,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
         if (compound.hasKey("Item", Constants.NBT.TAG_COMPOUND))
             setContainedItem(new ItemStack(compound.getCompoundTag("Item")));
         if (compound.hasKey("Creative", Constants.NBT.TAG_ANY_NUMERIC))
-            creative = compound.getBoolean("Creative");
+            setIsCreative(compound.getBoolean("Creative"));
     }
 
     @Override
@@ -493,7 +494,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
 
     public boolean isPowered(boolean consumePower) {
         IEnergyStorage energyStorage = getEnergyContainer();
-        return creative ||
+        return isCreative() ||
                 (getPower() >= getCost() &&
                 (!consumePower || energyStorage.extractEnergy(getCost(), false) == 0));
     }
@@ -510,6 +511,10 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
         dataManager.set(POWER, power);
     }
 
+    public void setIsCreative(boolean creative) {
+        dataManager.set(CREATIVE, creative);
+    }
+
     public int getPower() {
         return dataManager.get(POWER);
     }
@@ -524,6 +529,10 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
 
     public float getFlightRange() {
         return dataManager.get(RANGE);
+    }
+
+    public boolean isCreative() {
+        return dataManager.get(CREATIVE);
     }
 
     @Override

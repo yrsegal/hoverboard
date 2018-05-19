@@ -22,7 +22,7 @@ public class ItemCreativeHoverboard extends ItemHoverboard {
     @Override
     public EntityHoverboard createBoard(World worldIn, ItemStack stack, Vec3d position, float yaw) {
         EntityHoverboard board = super.createBoard(worldIn, stack, position, yaw);
-        board.creative = true;
+        board.setIsCreative(true);
         return board;
     }
 
