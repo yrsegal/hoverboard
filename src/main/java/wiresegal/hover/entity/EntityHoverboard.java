@@ -229,7 +229,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
         setPower(getEnergyContainer().getEnergyStored());
 
         if (world.isRemote && isPowered(false)) {
-            float powerPercent = getPower() / (float) getMaxFuel();
+            float powerPercent = getPower() / (float) getMaxFuel() * 0.5f + 0.5f;
 
             for (int i = 0; i < 2; ++i)
                 world.spawnParticle(EnumParticleTypes.REDSTONE, posX + (rand.nextDouble() - 0.5) * width, posY + rand.nextDouble() * height, posZ + (rand.nextDouble() - 0.5) * width, -1, powerPercent, powerPercent);
