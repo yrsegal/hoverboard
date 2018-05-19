@@ -43,6 +43,8 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.ITEM_STACK);
     private static final DataParameter<Integer> POWER
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.VARINT);
+    private static final DataParameter<Integer> POWER_MAX
+            = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.VARINT);
     private static final DataParameter<Integer> COST
             = EntityDataManager.createKey(EntityHoverboard.class, DataSerializers.VARINT);
     private static final DataParameter<Float> UGLIES
@@ -93,6 +95,7 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
         dataManager.register(DAMAGE_TAKEN, 0F);
         dataManager.register(CONTAINED, ItemStack.EMPTY);
         dataManager.register(POWER, 0);
+        dataManager.register(POWER_MAX, HoverConfig.GENERAL.fuelStorage);
         dataManager.register(COST, HoverConfig.GENERAL.fuelCost);
         dataManager.register(UGLIES, (float) HoverConfig.UGLIES.flightRange);
         dataManager.register(RANGE, (float) HoverConfig.GENERAL.flightRange);
@@ -225,9 +228,12 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
 
         setPower(getEnergyContainer().getEnergyStored());
 
-        if (world.isRemote)
+        if (world.isRemote && isPowered(false)) {
+            float powerPercent = getPower() / (float) getMaxFuel();
+
             for (int i = 0; i < 2; ++i)
-                world.spawnParticle(EnumParticleTypes.REDSTONE, posX + (rand.nextDouble() - 0.5) * width, posY + rand.nextDouble() * height, posZ + (rand.nextDouble() - 0.5) * width, -1, 1, 1);
+                world.spawnParticle(EnumParticleTypes.REDSTONE, posX + (rand.nextDouble() - 0.5) * width, posY + rand.nextDouble() * height, posZ + (rand.nextDouble() - 0.5) * width, -1, powerPercent, powerPercent);
+        }
 
         tickLerp();
 
@@ -529,6 +535,10 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
 
     public float getFlightRange() {
         return dataManager.get(RANGE);
+    }
+
+    public int getMaxFuel() {
+        return dataManager.get(POWER_MAX);
     }
 
     public boolean isCreative() {
