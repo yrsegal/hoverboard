@@ -2,6 +2,7 @@ package wiresegal.hover.item;
 
 import net.minecraft.creativetab.CreativeTabs;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -37,6 +38,17 @@ public class ItemHoverboard extends Item {
         setRegistryName(name);
         setMaxStackSize(1);
         setCreativeTab(CreativeTabs.TRANSPORTATION);
+    }
+
+    @Override
+    public boolean onEntityItemUpdate(EntityItem entityItem) {
+        entityItem.setEntityInvulnerable(true);
+        return false;
+    }
+
+    @Override
+    public int getEntityLifespan(ItemStack itemStack, World world) {
+        return Integer.MAX_VALUE;
     }
 
     @Override

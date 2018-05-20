@@ -142,6 +142,11 @@ public class EntityHoverboard extends Entity implements IJumpingMount {
     }
 
     @Override
+    public boolean isEntityInvulnerable(@Nonnull DamageSource source) {
+        return !(source.getTrueSource() instanceof EntityPlayer) || super.isEntityInvulnerable(source);
+    }
+
+    @Override
     public void applyEntityCollision(@Nonnull Entity entityIn) {
         if (entityIn instanceof EntityHoverboard) {
             if (entityIn.getEntityBoundingBox().minY < getEntityBoundingBox().maxY)
