@@ -1,47 +1,129 @@
 buildscript {
     repositories {
         jcenter()
-        maven {
-            name = "forge"
-            url = "https://files.minecraftforge.net/maven"
-        }
+        maven { url = "https://files.minecraftforge.net/maven" }
     }
     dependencies {
         classpath "net.minecraftforge.gradle:ForgeGradle:2.3-SNAPSHOT"
     }
 }
 
-apply plugin: "net.minecraftforge.gradle.forge"
+apply plugin: 'net.minecraftforge.gradle.forge'
+apply plugin: 'idea'
+apply plugin: 'java'
 
 version = mod_version
-group= mod_group
+group = mod_author + "." + mod_name
 archivesBaseName = mod_name
 
+ext.mod_name = mod_name.toLowerCase()
+ext.capitalized_name = mod_name.capitalize()
+ext.mod_fancy_name = project.hasProperty("mod_fancy_name") ? project.mod_fancy_name : ext.capitalized_name
+ext.mod_author = mod_author.toLowerCase()
+ext.core_plugin = project.hasProperty("core_plugin") && project.core_plugin == "true"
+ext.core_plugin_class = "${mod_author}.${mod_name}.asm.${capitalized_name}ClassTransformer"
+ext.core_plugin_args = []
+if (core_plugin)
+    core_plugin_args.add(core_plugin_class)
+if (project.hasProperty("other_core_plugins") && !other_core_plugins.isEmpty())
+    core_plugin_args.add(other_core_plugins)
+
+ext.core_plugin_compressed = "-Dfml.coreMods.load=" + core_plugin_args.join(",")
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+genIntellijRuns.shouldRunAfter(idea)
+
 minecraft {
-    version = project.forge_version
+    version = project.mc_version + "-" + project.forge_version
+    mappings = project.mcp_version
     runDir = "run"
 
-    if (project.hasProperty("core_plugin") && !core_plugin.isEmpty()) {
-        clientJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
-        serverJvmArgs = ["-Dfml.coreMods.load=$core_plugin"]
+    if (project.core_plugin) {
+        clientJvmArgs = [core_plugin_compressed]
+        serverJvmArgs = [core_plugin_compressed]
     }
 
-    mappings = project.mcp_version
-
-    replace 'GRADLE:VERSION', mod_version
-
-    replaceIn mod_main_class
+    replaceIn "${capitalized_name}.java"
     replaceIn "mcmod.info"
+
+    replace "%VERSION%", project.mod_version
 }
 
-if (project.hasProperty("core_plugin") && !core_plugin.isEmpty()) {
+idea {
+    module {
+        excludeDirs += [file("run"), file("out"), file("gradle"), file(".idea")]
+    }
+
+    if (it.project != null)
+        project {
+            jdkName = '1.8'
+            languageLevel = '1.8'
+        }
+}
+
+tasks.withType(JavaCompile).all {
+    sourceCompatibility = '1.8'
+    targetCompatibility = '1.8'
+}
+
+if (core_plugin != null) {
     jar {
         manifest {
             attributes(
                     "FMLCorePluginContainsFMLMod": "true",
-                    "FMLCorePlugin": core_plugin)
+                    "FMLCorePlugin": core_plugin_class)
         }
     }
+}
+
+def copyFile(String task_name, String from_path, String to_path, String to_name) {
+    project.task(task_name, type: Copy) {
+        onlyIf { !file("src/main/$to_path/$to_name").exists() }
+
+        from "gradle/assets/$from_path"
+        expand "mod_id": mod_name,
+                "mod_class": capitalized_name,
+                "mod_name": mod_fancy_name,
+                "mod_group": "${mod_author}.${mod_name}"
+
+        into "src/main/$to_path/"
+        rename { to_name }
+    }
+}
+
+copyFile("copyBaseModFile", "basic_class.java", "java/${mod_author}/${mod_name}", "${capitalized_name}.java")
+copyFile("copyModInfoFile", "mcmod.info", "resources", "mcmod.info")
+copyFile("copyResourcesFile", "pack.mcmeta", "resources", "pack.mcmeta")
+
+task copyAsm(type: Copy) {
+    onlyIf { core_plugin != null && !file("src/main/java/${mod_author}/${mod_name}/asm").exists() }
+    from "gradle/assets/asm/"
+    expand "mod_id": mod_name,
+            "mod_class": capitalized_name,
+            "mod_name": mod_fancy_name,
+            "mod_group": "${mod_author}.${mod_name}",
+            "mod_group_uri": "${mod_author}/${mod_name}"
+    into "src/main/java/${mod_author}/${mod_name}/asm/"
+    rename { capitalized_name + it }
+}
+
+task copyModFiles {
+    dependsOn copyBaseModFile
+    dependsOn copyModInfoFile
+    dependsOn copyResourcesFile
+    dependsOn copyAsm
+}
+
+setupDecompWorkspace {
+    dependsOn copyModFiles
+}
+
+task setup {
+    dependsOn setupDecompWorkspace
+    dependsOn ideaModule
+    dependsOn genIntellijRuns
 }
 
 repositories {
@@ -50,25 +132,31 @@ repositories {
 }
 
 dependencies {
-    deobfCompile "mezz.jei:jei_1.12:$jei_version:api"
-    runtime "mezz.jei:jei_1.12:$jei_version"
+    compile "mezz.jei:jei_${project.mc_version}:$jei_version:api"
+    runtime "mezz.jei:jei_${project.mc_version}:$jei_version"
 }
 
 processResources {
-    // this will ensure that this task is redone when the versions change.
-    inputs.property "mod_version", project.version
-    inputs.property "mc_version", project.minecraft.version
+    inputs.property "version", project.version
+    inputs.property "forge_version", project.forge_version
+    inputs.property "mc_version", project.mc_version
+    inputs.property "mod_id", project.mod_name
+    inputs.property "mod_name", project.mod_fancy_name
+    inputs.property "description", project.hasProperty("mod_description") ? project.mod_description : ""
+    inputs.property "author", project.mod_author
 
-    // replace stuff in mcmod.info, nothing else
     from(sourceSets.main.resources.srcDirs) {
-        include "mcmod.info"
-
-        // replace version and mcversion
-        expand "mod_version":project.version, "mc_version":project.minecraft.version
+        include "mcmod.info", "pack.mcmeta"
+        expand "version": project.version,
+                "forge_version": project.forge_version,
+                "mc_version": project.mc_version,
+                "mod_id": project.mod_name,
+                "mod_name": project.hasProperty("mod_fancy_name") ? project.mod_fancy_name : project.mod_name,
+                "description": project.hasProperty("mod_description") ? project.mod_description : "",
+                "author": project.mod_author
     }
 
-    // copy everything else, thats not the mcmod.info
     from(sourceSets.main.resources.srcDirs) {
-        exclude "mcmod.info"
+        exclude "mcmod.info", "pack.mcmeta"
     }
 }
