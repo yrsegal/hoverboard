@@ -10,14 +10,19 @@ import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.event.RegistryEvent;
 import net.minecraftforge.event.entity.EntityJoinWorldEvent;
 import net.minecraftforge.fml.client.registry.RenderingRegistry;
+import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventHandler;
 import net.minecraftforge.fml.common.SidedProxy;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLInterModComms;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.registry.EntityEntry;
 import net.minecraftforge.fml.common.registry.EntityEntryBuilder;
 import net.minecraftforge.fml.relauncher.Side;
 import net.minecraftforge.fml.relauncher.SideOnly;
+import wiresegal.hover.compat.TOPCompatibility;
 import wiresegal.hover.core.CommonProxy;
 import wiresegal.hover.entity.EntityHoverboard;
 import wiresegal.hover.entity.render.MovingSoundHoverboard;
@@ -44,7 +49,7 @@ public class Hoverboard {
     public static ItemHoverboard CREATIVE;
 
     public static SoundEvent WHIRR;
-
+    
     @SubscribeEvent
     public static void onRegisterItems(RegistryEvent.Register<Item> event) {
         event.getRegistry().register(HOVERBOARD = new ItemHoverboard("hoverboard"));
@@ -79,6 +84,12 @@ public class Hoverboard {
     @SideOnly(Side.CLIENT)
     public void onClientInit(FMLPreInitializationEvent event) {
         RenderingRegistry.registerEntityRenderingHandler(EntityHoverboard.class, RenderHoverboard::new);
+    }
+    
+    @Mod.EventHandler
+    public void onInit(FMLInitializationEvent event) {
+        if(Loader.isModLoaded("theoneprobe"))
+            FMLInterModComms.sendFunctionMessage("theoneprobe","getTheOneProbe","wiresegal.hover.compat.TOPCompatibility");
     }
 
     @SubscribeEvent
