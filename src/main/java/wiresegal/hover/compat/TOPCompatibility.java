@@ -13,6 +13,7 @@ import mcjty.theoneprobe.config.Config;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.item.ItemStack;
+import net.minecraft.util.text.TextFormatting;
 import net.minecraft.world.World;
 import net.minecraftforge.energy.CapabilityEnergy;
 import net.minecraftforge.energy.IEnergyStorage;
@@ -39,13 +40,19 @@ public class TOPCompatibility implements Function<ITheOneProbe, Void> {
 					if(entity instanceof EntityHoverboard) {
 						int currentPower = ((EntityHoverboard)entity).getPower();
 						int maxPower = ((EntityHoverboard)entity).getMaxFuel();
+						boolean creative = ((EntityHoverboard)entity).isCreative();
 						
-						iProbeInfo.progress(currentPower,maxPower,iProbeInfo.defaultProgressStyle()
-								.suffix("FE")
-								.filledColor(Config.rfbarFilledColor)
-								.alternateFilledColor(Config.rfbarAlternateFilledColor)
-								.borderColor(Config.rfbarBorderColor)
-								.numberFormat(Config.rfFormat));
+						if(!creative) {
+							iProbeInfo.progress(currentPower, maxPower, iProbeInfo
+									.defaultProgressStyle()
+									.suffix("FE")
+									.filledColor(Config.rfbarFilledColor)
+									.alternateFilledColor(Config.rfbarAlternateFilledColor)
+									.borderColor(Config.rfbarBorderColor)
+									.numberFormat(Config.rfFormat));
+						} else {
+							iProbeInfo.text(TextFormatting.LIGHT_PURPLE + "Creative");
+						}
 					}
 				}
 				
