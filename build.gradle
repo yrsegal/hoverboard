@@ -68,7 +68,7 @@ tasks.withType(JavaCompile).all {
     targetCompatibility = '1.8'
 }
 
-if (core_plugin != null) {
+if (core_plugin) {
     jar {
         manifest {
             attributes(
@@ -98,7 +98,7 @@ copyFile("copyModInfoFile", "mcmod.info", "resources", "mcmod.info")
 copyFile("copyResourcesFile", "pack.mcmeta", "resources", "pack.mcmeta")
 
 task copyAsm(type: Copy) {
-    onlyIf { core_plugin != null && !file("src/main/java/${mod_author}/${mod_name}/asm").exists() }
+    onlyIf { core_plugin && !file("src/main/java/${mod_author}/${mod_name}/asm").exists() }
     from "gradle/assets/asm/"
     expand "mod_id": mod_name,
             "mod_class": capitalized_name,
